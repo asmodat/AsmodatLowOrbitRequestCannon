@@ -69,23 +69,23 @@ namespace AsmodatLowOrbitRequestCannon
 
         static void Main(string[] args)
         {
-            var intensity2 = args.Length > 1 ? args[1].ToIntOrDefault(60) : 60;
-            var intensity1 = (args.Length > 0 ? args[0].ToIntOrDefault(1000000) : 1000000) / intensity2;
-            var verify = args.Length > 2 ? args[2].ToBoolOrDefault(true) : true;
-            Console.WriteLine("Asmodat Low Orbit Request Cannon v0.1");
-            Console.WriteLine($"Iterations: {intensity1 * intensity2}, Intensity: {intensity2}");
-            Run(intensity1, intensity2, verify);
+            var intensity1 = args.Length > 0 ? args[0].ToIntOrDefault(1000000) : 1000000;
+            var intensity2 = args.Length > 1 ? args[1].ToIntOrDefault(60) : 15;
+            var intensity3 = args.Length > 2 ? args[2].ToIntOrDefault(10) : 10;
+            var verify = args.Length > 3 ? args[3].ToBoolOrDefault(true) : true;
+            Console.WriteLine("Asmodat Low Orbit Request Cannon v0.2");
+            Console.WriteLine($"Total requests: {intensity1 * intensity2}, Per Batch: {intensity2}, Parallelization: {intensity3}");
+            Run(intensity1, intensity2, intensity3, verify);
             Console.WriteLine("Done");
         }
 
-        private static void Run(int intensity1, int intensity2, bool verify)
+        private static void Run(int intensity1, int intensity2, int intensity3, bool verify)
         {
             var sw = Stopwatch.StartNew();
             int sCounter = 0;
             int fCOunter = 0;
             string lastException = "";
-            Parallel.For(0, intensity1, new ParallelOptions() { MaxDegreeOfParallelism = 10000 }, i => {
-
+            Parallel.For(0, intensity1, new ParallelOptions() { MaxDegreeOfParallelism = intensity3 }, i => {
                 async Task RunAsync()
                 {
                     bool success;
