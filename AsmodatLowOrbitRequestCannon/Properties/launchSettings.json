@@ -7,6 +7,10 @@
     "swixer": {
       "commandName": "Project",
       "commandLineArgs": "--intensity=\"1000000\" --batch=\"30\" --parallel=\"30\" --verify=\"true\" --mode=\"swixer\""
+    },
+    "vpnx": {
+      "commandName": "Project",
+      "commandLineArgs": "--intensity=\"10000000\" --batch=\"1\" --parallel=\"1\" --mode=\"vpnx\""
     }
   }
 }
